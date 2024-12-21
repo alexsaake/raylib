@@ -168,10 +168,10 @@
         #undef GRAPHICS_API_OPENGL_33
     #endif
     #if defined(GRAPHICS_API_OPENGL_43)
-    #undef GRAPHICS_API_OPENGL_43
+        #undef GRAPHICS_API_OPENGL_43
     #endif
     #if defined(GRAPHICS_API_OPENGL_45)
-    #undef GRAPHICS_API_OPENGL_45
+        #undef GRAPHICS_API_OPENGL_45
     #endif
     #if defined(GRAPHICS_API_OPENGL_ES2)
         #undef GRAPHICS_API_OPENGL_ES2
@@ -182,6 +182,11 @@
 // WARNING: Specific parts are checked with #if defines
 #if defined(GRAPHICS_API_OPENGL_21)
     #define GRAPHICS_API_OPENGL_33
+#endif
+
+// OpenGL 4.5 uses OpenGL 4.3 Core functionality
+#if defined(GRAPHICS_API_OPENGL_45)
+    #define GRAPHICS_API_OPENGL_43
 #endif
 
 // OpenGL 4.3 uses OpenGL 3.3 Core functionality
