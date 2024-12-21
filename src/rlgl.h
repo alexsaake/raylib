@@ -25,6 +25,7 @@
 *       #define GRAPHICS_API_OPENGL_21
 *       #define GRAPHICS_API_OPENGL_33
 *       #define GRAPHICS_API_OPENGL_43
+*       #define GRAPHICS_API_OPENGL_45
 *       #define GRAPHICS_API_OPENGL_ES2
 *       #define GRAPHICS_API_OPENGL_ES3
 *           Use selected OpenGL graphics backend, should be supported by platform
@@ -167,7 +168,10 @@
         #undef GRAPHICS_API_OPENGL_33
     #endif
     #if defined(GRAPHICS_API_OPENGL_43)
-        #undef GRAPHICS_API_OPENGL_43
+    #undef GRAPHICS_API_OPENGL_43
+    #endif
+    #if defined(GRAPHICS_API_OPENGL_45)
+    #undef GRAPHICS_API_OPENGL_45
     #endif
     #if defined(GRAPHICS_API_OPENGL_ES2)
         #undef GRAPHICS_API_OPENGL_ES2
@@ -289,6 +293,8 @@
 #define RL_FRAGMENT_SHADER                      0x8B30      // GL_FRAGMENT_SHADER
 #define RL_VERTEX_SHADER                        0x8B31      // GL_VERTEX_SHADER
 #define RL_COMPUTE_SHADER                       0x91B9      // GL_COMPUTE_SHADER
+#define RL_MESH_SHADER                          0x9559      // GL_MESH_SHADER
+#define RL_TASK_SHADER                          0x955A      // GL_TASK_SHADER
 
 // GL blending factors
 #define RL_ZERO                                 0           // GL_ZERO
@@ -431,6 +437,7 @@ typedef enum {
     RL_OPENGL_21,               // OpenGL 2.1 (GLSL 120)
     RL_OPENGL_33,               // OpenGL 3.3 (GLSL 330)
     RL_OPENGL_43,               // OpenGL 4.3 (using GLSL 330)
+    RL_OPENGL_45,               // OpenGL 4.5 (using GLSL 330)
     RL_OPENGL_ES_20,            // OpenGL ES 2.0 (GLSL 100)
     RL_OPENGL_ES_30             // OpenGL ES 3.0 (GLSL 300 es)
 } rlGlVersion;
@@ -769,7 +776,7 @@ RLAPI void rlUnloadFramebuffer(unsigned int id);                          // Del
 
 // Shaders management
 RLAPI unsigned int rlLoadShaderCode(const char *vsCode, const char *fsCode);    // Load shader from code strings
-RLAPI unsigned int rlCompileShader(const char *shaderCode, int type);           // Compile custom shader and return shader id (type: RL_VERTEX_SHADER, RL_FRAGMENT_SHADER, RL_COMPUTE_SHADER)
+RLAPI unsigned int rlCompileShader(const char *shaderCode, int type);           // Compile custom shader and return shader id (type: RL_VERTEX_SHADER, RL_FRAGMENT_SHADER, RL_COMPUTE_SHADER, RL_TASK_SHADER, RL_MESH_SHADER)
 RLAPI unsigned int rlLoadShaderProgram(unsigned int vShaderId, unsigned int fShaderId); // Load custom shader program
 RLAPI void rlUnloadShaderProgram(unsigned int id);                              // Unload shader program
 RLAPI int rlGetLocationUniform(unsigned int shaderId, const char *uniformName); // Get shader location uniform
@@ -783,6 +790,11 @@ RLAPI void rlSetShader(unsigned int id, int *locs);                             
 // Compute shader management
 RLAPI unsigned int rlLoadComputeShaderProgram(unsigned int shaderId);           // Load compute shader program
 RLAPI void rlComputeShaderDispatch(unsigned int groupX, unsigned int groupY, unsigned int groupZ); // Dispatch compute shader (equivalent to *draw* for graphics pipeline)
+
+// Mesh shader management
+RLAPI unsigned int rlLoadMeshShaderProgramS(unsigned int mShaderId, unsigned int fShaderId); // Load mesh shader program
+RLAPI unsigned int rlLoadMeshShaderProgram(unsigned int tShaderId, unsigned int mShaderId, unsigned int fShaderId); // Load mesh shader program
+RLAPI void rlDrawMeshTasks(unsigned int first, unsigned int count);  // Draw mesh shader
 
 // Shader buffer storage object management (ssbo)
 RLAPI unsigned int rlLoadShaderBuffer(unsigned int size, const void *data, int usageHint); // Load shader storage buffer object (SSBO)
@@ -1106,6 +1118,7 @@ typedef struct rlglData {
         bool texAnisoFilter;                // Anisotropic texture filtering support (GL_EXT_texture_filter_anisotropic)
         bool computeShader;                 // Compute shaders support (GL_ARB_compute_shader)
         bool ssbo;                          // Shader storage buffer object support (GL_ARB_shader_storage_buffer_object)
+        bool meshShader;                    // Mesh shaders support (GL_NV_mesh_shader)
 
         float maxAnisotropyLevel;           // Maximum anisotropy level supported (minimum is 2.0f)
         int maxDepthBits;                   // Maximum bits for depth component
@@ -2382,6 +2395,7 @@ void rlLoadExtensions(void *loader)
     #if defined(GRAPHICS_API_OPENGL_43)
     RLGL.ExtSupported.computeShader = GLAD_GL_ARB_compute_shader;
     RLGL.ExtSupported.ssbo = GLAD_GL_ARB_shader_storage_buffer_object;
+    RLGL.ExtSupported.meshShader = GLAD_GL_NV_mesh_shader;
     #endif
 
 #endif  // GRAPHICS_API_OPENGL_33
@@ -2614,6 +2628,7 @@ void rlLoadExtensions(void *loader)
     if (RLGL.ExtSupported.texCompASTC) TRACELOG(RL_LOG_INFO, "GL: ASTC compressed textures supported");
     if (RLGL.ExtSupported.computeShader) TRACELOG(RL_LOG_INFO, "GL: Compute shaders supported");
     if (RLGL.ExtSupported.ssbo) TRACELOG(RL_LOG_INFO, "GL: Shader storage buffer objects supported");
+    if (RLGL.ExtSupported.meshShader) TRACELOG(RL_LOG_INFO, "GL: Mesh shaders supported");
 #endif  // RLGL_SHOW_GL_DETAILS_INFO
 
 #endif  // GRAPHICS_API_OPENGL_33 || GRAPHICS_API_OPENGL_ES2
@@ -2630,6 +2645,8 @@ int rlGetVersion(void)
     glVersion = RL_OPENGL_21;
 #elif defined(GRAPHICS_API_OPENGL_43)
     glVersion = RL_OPENGL_43;
+#elif defined(GRAPHICS_API_OPENGL_45)
+    glVersion = RL_OPENGL_45;
 #elif defined(GRAPHICS_API_OPENGL_33)
     glVersion = RL_OPENGL_33;
 #endif
@@ -4152,6 +4169,10 @@ unsigned int rlCompileShader(const char *shaderCode, int type)
         #elif defined(GRAPHICS_API_OPENGL_33)
             case GL_COMPUTE_SHADER: TRACELOG(RL_LOG_WARNING, "SHADER: Compute shaders not enabled. Define GRAPHICS_API_OPENGL_43", shader); break;
         #endif
+        #if defined(GRAPHICS_API_OPENGL_45)
+            case GL_TASK_SHADER_NV: TRACELOG(RL_LOG_WARNING, "SHADER: [ID %i] Failed to compile task shader code", shader); break;
+            case GL_MESH_SHADER_NV: TRACELOG(RL_LOG_WARNING, "SHADER: [ID %i] Failed to compile mesh shader code", shader); break;
+        #endif
             default: break;
         }
 
@@ -4180,6 +4201,10 @@ unsigned int rlCompileShader(const char *shaderCode, int type)
             case GL_COMPUTE_SHADER: TRACELOG(RL_LOG_INFO, "SHADER: [ID %i] Compute shader compiled successfully", shader); break;
         #elif defined(GRAPHICS_API_OPENGL_33)
             case GL_COMPUTE_SHADER: TRACELOG(RL_LOG_WARNING, "SHADER: Compute shaders not enabled. Define GRAPHICS_API_OPENGL_43", shader); break;
+        #endif
+        #if defined(GRAPHICS_API_OPENGL_45)
+            case GL_TASK_SHADER_NV: TRACELOG(RL_LOG_INFO, "SHADER: [ID %i] Task shader compiled successfully", shader); break;
+            case GL_MESH_SHADER_NV: TRACELOG(RL_LOG_INFO, "SHADER: [ID %i] Mesh shader compiled successfully", shader); break;
         #endif
             default: break;
         }
@@ -4458,6 +4483,115 @@ void rlComputeShaderDispatch(unsigned int groupX, unsigned int groupY, unsigned 
 {
 #if defined(GRAPHICS_API_OPENGL_43)
     glDispatchCompute(groupX, groupY, groupZ);
+#endif
+}
+
+// Load mesh shader program
+unsigned int rlLoadMeshShaderProgramS(unsigned int mShaderId, unsigned int fShaderId)
+{
+    unsigned int program = 0;
+
+#if defined(GRAPHICS_API_OPENGL_45)
+    GLint success = 0;
+    program = glCreateProgram();
+    glAttachShader(program, mShaderId);
+    glAttachShader(program, fShaderId);
+    glLinkProgram(program);
+
+    // NOTE: All uniform variables are intitialised to 0 when a program links
+
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+
+    if (success == GL_FALSE)
+    {
+        TRACELOG(RL_LOG_WARNING, "SHADER: [ID %i] Failed to link mesh shader program", program);
+
+        int maxLength = 0;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
+
+        if (maxLength > 0)
+        {
+            int length = 0;
+            char* log = (char*)RL_CALLOC(maxLength, sizeof(char));
+            glGetProgramInfoLog(program, maxLength, &length, log);
+            TRACELOG(RL_LOG_WARNING, "SHADER: [ID %i] Link error: %s", program, log);
+            RL_FREE(log);
+        }
+
+        glDeleteProgram(program);
+
+        program = 0;
+    }
+    else
+    {
+        // Get the size of compiled shader program (not available on OpenGL ES 2.0)
+        // NOTE: If GL_LINK_STATUS is GL_FALSE, program binary length is zero.
+        //GLint binarySize = 0;
+        //glGetProgramiv(id, GL_PROGRAM_BINARY_LENGTH, &binarySize);
+
+        TRACELOG(RL_LOG_INFO, "SHADER: [ID %i] Mesh shader program loaded successfully", program);
+    }
+#endif
+
+    return program;
+}
+
+// Load mesh shader program
+unsigned int rlLoadMeshShaderProgram(unsigned int tShaderId, unsigned int mShaderId, unsigned int fShaderId)
+{
+    unsigned int program = 0;
+
+#if defined(GRAPHICS_API_OPENGL_45)
+    GLint success = 0;
+    program = glCreateProgram();
+    glAttachShader(program, tShaderId);
+    glAttachShader(program, mShaderId);
+    glAttachShader(program, fShaderId);
+    glLinkProgram(program);
+
+    // NOTE: All uniform variables are intitialised to 0 when a program links
+
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+
+    if (success == GL_FALSE)
+    {
+        TRACELOG(RL_LOG_WARNING, "SHADER: [ID %i] Failed to link mesh shader program", program);
+
+        int maxLength = 0;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
+
+        if (maxLength > 0)
+        {
+            int length = 0;
+            char* log = (char*)RL_CALLOC(maxLength, sizeof(char));
+            glGetProgramInfoLog(program, maxLength, &length, log);
+            TRACELOG(RL_LOG_WARNING, "SHADER: [ID %i] Link error: %s", program, log);
+            RL_FREE(log);
+        }
+
+        glDeleteProgram(program);
+
+        program = 0;
+    }
+    else
+    {
+        // Get the size of compiled shader program (not available on OpenGL ES 2.0)
+        // NOTE: If GL_LINK_STATUS is GL_FALSE, program binary length is zero.
+        //GLint binarySize = 0;
+        //glGetProgramiv(id, GL_PROGRAM_BINARY_LENGTH, &binarySize);
+
+        TRACELOG(RL_LOG_INFO, "SHADER: [ID %i] Mesh shader program loaded successfully", program);
+    }
+#endif
+
+    return program;
+}
+
+// Draw mesh shader
+void rlDrawMeshTasks(unsigned int first, unsigned int count)
+{
+#if defined(GRAPHICS_API_OPENGL_45)
+    glDrawMeshTasksNV(first, count);
 #endif
 }
 
