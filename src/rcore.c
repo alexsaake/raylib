@@ -1375,6 +1375,110 @@ Shader LoadShaderFromMemory(const char *vsCode, const char *fsCode)
     return shader;
 }
 
+// Load mesh shader from files and bind default locations
+Shader LoadMeshShader(const char* tsFileName, const char* msFileName, const char* fsFileName)
+{
+    Shader shader = { 0 };
+
+    char* tShaderStr = NULL;
+    char* mShaderStr = NULL;
+    char* fShaderStr = NULL;
+
+    if (msFileName != NULL) tShaderStr = LoadFileText(tsFileName);
+    if (msFileName != NULL) mShaderStr = LoadFileText(msFileName);
+    if (fsFileName != NULL) fShaderStr = LoadFileText(fsFileName);
+
+    shader = LoadMeshShaderFromMemory(tShaderStr, mShaderStr, fShaderStr);
+
+    UnloadFileText(tShaderStr);
+    UnloadFileText(mShaderStr);
+    UnloadFileText(fShaderStr);
+
+    return shader;
+}
+
+// Load mesh shader from code strings and bind default locations
+Shader LoadMeshShaderFromMemory(const char* tsCode, const char* msCode, const char* fsCode)
+{
+    Shader shader = { 0 };
+
+    unsigned int tShaderId = rlCompileShader(tsCode, RL_TASK_SHADER);
+    unsigned int mShaderId = rlCompileShader(msCode, RL_MESH_SHADER);
+    unsigned int fShaderId = rlCompileShader(fsCode, RL_FRAGMENT_SHADER);
+
+    shader.id = rlLoadMeshShaderProgram(tShaderId, mShaderId, fShaderId);
+
+    // After shader loading, we TRY to set default location names
+    if (shader.id > 0)
+    {
+        // NOTE: If any location is not found, loc point becomes -1
+
+        shader.locs = (int*)RL_CALLOC(RL_MAX_SHADER_LOCATIONS, sizeof(int));
+
+        // All locations reset to -1 (no location)
+        for (int i = 0; i < RL_MAX_SHADER_LOCATIONS; i++) shader.locs[i] = -1;
+
+        // Get handles to GLSL uniform locations (vertex shader)
+        shader.locs[0] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MVP);
+        shader.locs[1] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_VIEW);
+        shader.locs[2] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_PROJECTION);
+        shader.locs[3] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MODEL);
+        shader.locs[4] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_NORMAL);
+    }
+
+    return shader;
+}
+
+// Load mesh shader from files and bind default locations
+Shader LoadMeshShaderS(const char* msFileName, const char* fsFileName)
+{
+    Shader shader = { 0 };
+
+    char* mShaderStr = NULL;
+    char* fShaderStr = NULL;
+
+    if (msFileName != NULL) mShaderStr = LoadFileText(msFileName);
+    if (fsFileName != NULL) fShaderStr = LoadFileText(fsFileName);
+
+    shader = LoadMeshShaderFromMemoryS(mShaderStr, fShaderStr);
+
+    UnloadFileText(mShaderStr);
+    UnloadFileText(fShaderStr);
+
+    return shader;
+}
+
+// Load mesh shader from code strings and bind default locations
+Shader LoadMeshShaderFromMemoryS(const char* msCode, const char* fsCode)
+{
+    Shader shader = { 0 };
+
+    unsigned int mShaderId = rlCompileShader(msCode, RL_MESH_SHADER);
+    unsigned int fShaderId = rlCompileShader(fsCode, RL_FRAGMENT_SHADER);
+
+    shader.id = rlLoadMeshShaderProgramS(mShaderId, fShaderId);
+
+    // After shader loading, we TRY to set default location names
+    if (shader.id > 0)
+    {
+        // NOTE: If any location is not found, loc point becomes -1
+
+        shader.locs = (int*)RL_CALLOC(RL_MAX_SHADER_LOCATIONS, sizeof(int));
+
+        // All locations reset to -1 (no location)
+        for (int i = 0; i < RL_MAX_SHADER_LOCATIONS; i++) shader.locs[i] = -1;
+
+        // Get handles to GLSL uniform locations (vertex shader)
+        shader.locs[0] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MVP);
+        shader.locs[1] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_VIEW);
+        shader.locs[2] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_PROJECTION);
+        shader.locs[3] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MODEL);
+        shader.locs[4] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_NORMAL);
+    }
+
+    return shader;
+}
+
 // Check if a shader is valid (loaded on GPU)
 bool IsShaderValid(Shader shader)
 {

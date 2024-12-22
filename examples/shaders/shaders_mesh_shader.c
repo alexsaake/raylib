@@ -5,7 +5,6 @@
 #if defined(PLATFORM_DESKTOP)
 #define GLSL_VERSION            450
 #endif
-#include <config.h>
 
 int main(void)
 {
@@ -14,16 +13,10 @@ int main(void)
 
     InitWindow(screenWidth, screenHeight, "Mesh Shader Example");
 
-    char* meshShaderCode = LoadFileText("resources/shaders/glsl450/MeshShader.glsl");
-    unsigned int meshShader = rlCompileShader(meshShaderCode, RL_MESH_SHADER);
-    UnloadFileText(meshShaderCode);
-    char* fragmentShaderCode = LoadFileText("resources/shaders/glsl450/FragmentShader.glsl");
-    unsigned int fragmentShader = rlCompileShader(fragmentShaderCode, RL_FRAGMENT_SHADER);
-    UnloadFileText(fragmentShaderCode);
-    unsigned int program = rlLoadMeshShaderProgramS(meshShader, fragmentShader);
+    Shader meshShader = LoadMeshShaderS("resources/shaders/glsl450/MeshShader.glsl", "resources/shaders/glsl450/FragmentShader.glsl");
 
-    rlEnableShader(program);
-
+    rlEnableShader(meshShader.id);
+    
     SetTargetFPS(60);
 
     while(!WindowShouldClose())
@@ -35,7 +28,7 @@ int main(void)
     }
 
     rlDisableShader();
-    rlUnloadShaderProgram(program);
+    UnloadShader(meshShader);
 
     CloseWindow();
 
