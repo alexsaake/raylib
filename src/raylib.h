@@ -1059,6 +1059,7 @@ RLAPI Shader LoadMeshShaderS(const char* msFileName, const char* fsFileName);   
 RLAPI Shader LoadMeshShader(const char* tsFileName, const char* msFileName, const char* fsFileName);   // Load mesh shader from files and bind default locations
 RLAPI Shader LoadMeshShaderFromMemoryS(const char* msCode, const char* fsCode);   // Load mesh shader from code strings and bind default locations
 RLAPI Shader LoadMeshShaderFromMemory(const char* tsCode, const char* msCode, const char* fsCode);   // Load mesh shader from code strings and bind default locations
+RLAPI void DrawMeshTasks(unsigned int first, unsigned int count);   // Draw mesh shader
 RLAPI bool IsShaderValid(Shader shader);                                   // Check if a shader is valid (loaded on GPU)
 RLAPI int GetShaderLocation(Shader shader, const char *uniformName);       // Get shader uniform location
 RLAPI int GetShaderLocationAttrib(Shader shader, const char *attribName);  // Get shader attribute location

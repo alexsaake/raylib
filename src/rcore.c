@@ -1419,11 +1419,11 @@ Shader LoadMeshShaderFromMemory(const char* tsCode, const char* msCode, const ch
         for (int i = 0; i < RL_MAX_SHADER_LOCATIONS; i++) shader.locs[i] = -1;
 
         // Get handles to GLSL uniform locations (vertex shader)
-        shader.locs[0] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MVP);
-        shader.locs[1] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_VIEW);
-        shader.locs[2] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_PROJECTION);
-        shader.locs[3] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MODEL);
-        shader.locs[4] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_NORMAL);
+        shader.locs[SHADER_LOC_MATRIX_MVP] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MVP);
+        shader.locs[SHADER_LOC_MATRIX_VIEW] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_VIEW);
+        shader.locs[SHADER_LOC_MATRIX_PROJECTION] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_PROJECTION);
+        shader.locs[SHADER_LOC_MATRIX_MODEL] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MODEL);
+        shader.locs[SHADER_LOC_MATRIX_NORMAL] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_NORMAL);
     }
 
     return shader;
@@ -1469,14 +1469,50 @@ Shader LoadMeshShaderFromMemoryS(const char* msCode, const char* fsCode)
         for (int i = 0; i < RL_MAX_SHADER_LOCATIONS; i++) shader.locs[i] = -1;
 
         // Get handles to GLSL uniform locations (vertex shader)
-        shader.locs[0] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MVP);
-        shader.locs[1] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_VIEW);
-        shader.locs[2] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_PROJECTION);
-        shader.locs[3] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MODEL);
-        shader.locs[4] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_NORMAL);
+        shader.locs[SHADER_LOC_MATRIX_MVP] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MVP);
+        shader.locs[SHADER_LOC_MATRIX_VIEW] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_VIEW);
+        shader.locs[SHADER_LOC_MATRIX_PROJECTION] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_PROJECTION);
+        shader.locs[SHADER_LOC_MATRIX_MODEL] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MODEL);
+        shader.locs[SHADER_LOC_MATRIX_NORMAL] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_NORMAL);
     }
 
     return shader;
+}
+
+// Draw mesh shader
+void DrawMeshTasks(unsigned int first, unsigned int count)
+{
+    // Get a copy of current matrices to work with,
+    // just in case stereo render is required, and we need to modify them
+    // NOTE: At this point the modelview matrix just contains the view matrix (camera)
+    // That's because BeginMode3D() sets it and there is no model-drawing function
+    // that modifies it, all use rlPushMatrix() and rlPopMatrix()
+    Matrix matModel = MatrixIdentity();
+    Matrix matView = rlGetMatrixModelview();
+    Matrix matModelView = MatrixIdentity();
+    Matrix matProjection = rlGetMatrixProjection();
+
+    // Upload view and projection matrices (if locations available)
+    if (RLGL.State.currentShaderLocs[SHADER_LOC_MATRIX_VIEW] != -1) rlSetUniformMatrix(RLGL.State.currentShaderLocs[SHADER_LOC_MATRIX_VIEW], matView);
+    if (RLGL.State.currentShaderLocs[SHADER_LOC_MATRIX_PROJECTION] != -1) rlSetUniformMatrix(RLGL.State.currentShaderLocs[SHADER_LOC_MATRIX_PROJECTION], matProjection);
+
+    // Model transformation matrix is sent to shader uniform location: SHADER_LOC_MATRIX_MODEL
+    if (RLGL.State.currentShaderLocs[SHADER_LOC_MATRIX_MODEL] != -1) rlSetUniformMatrix(RLGL.State.currentShaderLocs[SHADER_LOC_MATRIX_MODEL], matModel);
+
+    // Get model-view matrix
+    matModelView = MatrixMultiply(matModel, matView);
+
+    // Upload model normal matrix (if locations available)
+    if (RLGL.State.currentShaderLocs[SHADER_LOC_MATRIX_NORMAL] != -1) rlSetUniformMatrix(RLGL.State.currentShaderLocs[SHADER_LOC_MATRIX_NORMAL], MatrixTranspose(MatrixInvert(matModel)));
+
+    // Calculate model-view-projection matrix (MVP)
+    Matrix matModelViewProjection = MatrixIdentity();
+    matModelViewProjection = MatrixMultiply(matModelView, matProjection);
+
+    // Send combined model-view-projection matrix to shader
+    if (RLGL.State.currentShaderLocs[SHADER_LOC_MATRIX_MVP] != -1) rlSetUniformMatrix(RLGL.State.currentShaderLocs[SHADER_LOC_MATRIX_MVP], matModelViewProjection);
+
+    rlDrawMeshTasks(first, count);
 }
 
 // Check if a shader is valid (loaded on GPU)

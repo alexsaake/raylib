@@ -13,21 +13,34 @@ int main(void)
 
     InitWindow(screenWidth, screenHeight, "Mesh Shader Example");
 
+    Camera camera = { 0 };
+    camera.position = (Vector3){ -125.0f, -125.0f, 125.0f };    // Camera position
+    camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };              // Camera looking at point
+    camera.up = (Vector3){ 0.0f, 0.0f, 1.0f };                  // Camera up vector (rotation towards target)
+    camera.fovy = 45.0f;                                        // Camera field-of-view Y
+    camera.projection = CAMERA_PERSPECTIVE;                     // Camera projection type
+
     Shader meshShader = LoadMeshShaderS("resources/shaders/glsl450/MeshShader.glsl", "resources/shaders/glsl450/FragmentShader.glsl");
 
-    rlEnableShader(meshShader.id);
-    
+
     SetTargetFPS(60);
 
     while(!WindowShouldClose())
     {
-        ClearBackground(RAYWHITE);
-        rlDrawMeshTasks(0, 1);
-        SwapScreenBuffer();
-        PollInputEvents();
+        UpdateCamera(&camera, CAMERA_ORBITAL);
+
+        BeginDrawing();
+            ClearBackground(RAYWHITE);
+            BeginShaderMode(meshShader);
+                BeginMode3D(camera);
+                    rlEnableShader(meshShader.id);
+                    DrawMeshTasks(0, 1);
+                    rlDisableShader();
+                EndMode3D();
+            EndShaderMode();
+        EndDrawing();
     }
 
-    rlDisableShader();
     UnloadShader(meshShader);
 
     CloseWindow();
