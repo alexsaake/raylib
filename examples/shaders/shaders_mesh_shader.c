@@ -33,9 +33,7 @@ int main(void)
             ClearBackground(RAYWHITE);
             BeginShaderMode(meshShader);
                 BeginMode3D(camera);
-                    rlEnableShader(meshShader.id);
                     DrawMeshTasks(0, 1);
-                    rlDisableShader();
                 EndMode3D();
             EndShaderMode();
         EndDrawing();
