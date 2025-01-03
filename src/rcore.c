@@ -120,6 +120,9 @@
 #define RLGL_IMPLEMENTATION
 #include "rlgl.h"                   // OpenGL abstraction layer to OpenGL 1.1, 3.3+ or ES2
 
+#define RAYGUI_IMPLEMENTATION
+#include "raygui.h"
+
 #define RAYMATH_IMPLEMENTATION
 #include "raymath.h"                // Vector2, Vector3, Quaternion and Matrix functionality
 
@@ -1482,7 +1485,6 @@ Shader LoadMeshShaderFromMemoryS(const char* msCode, const char* fsCode)
 // Draw mesh shader
 void DrawMeshTasks(unsigned int first, unsigned int count)
 {
-    rlEnableShader(RLGL.State.currentShaderId);
     // Get a copy of current matrices to work with,
     // just in case stereo render is required, and we need to modify them
     // NOTE: At this point the modelview matrix just contains the view matrix (camera)
@@ -1514,8 +1516,6 @@ void DrawMeshTasks(unsigned int first, unsigned int count)
     if (RLGL.State.currentShaderLocs[SHADER_LOC_MATRIX_MVP] != -1) rlSetUniformMatrix(RLGL.State.currentShaderLocs[SHADER_LOC_MATRIX_MVP], matModelViewProjection);
 
     rlDrawMeshTasks(first, count);
-
-    rlDisableShader();
 }
 
 // Check if a shader is valid (loaded on GPU)
