@@ -795,6 +795,7 @@ RLAPI void rlSetShader(unsigned int id, int *locs);                             
 // Compute shader management
 RLAPI unsigned int rlLoadComputeShaderProgram(unsigned int shaderId);           // Load compute shader program
 RLAPI void rlComputeShaderDispatch(unsigned int groupX, unsigned int groupY, unsigned int groupZ); // Dispatch compute shader (equivalent to *draw* for graphics pipeline)
+RLAPI void rlMemoryBarrier(); // Memory barrier
 
 // Mesh shader management
 RLAPI unsigned int rlLoadMeshShaderProgramS(unsigned int mShaderId, unsigned int fShaderId); // Load mesh shader program
@@ -4488,6 +4489,14 @@ void rlComputeShaderDispatch(unsigned int groupX, unsigned int groupY, unsigned 
 {
 #if defined(GRAPHICS_API_OPENGL_43)
     glDispatchCompute(groupX, groupY, groupZ);
+#endif
+}
+
+// Memory barrier
+void rlMemoryBarrier()
+{
+#if defined(GRAPHICS_API_OPENGL_43)
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 #endif
 }
 
