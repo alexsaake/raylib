@@ -1395,7 +1395,7 @@ void UploadMesh(Mesh *mesh, bool dynamic)
 
     if (mesh->indices != NULL)
     {
-        mesh->vboId[RL_DEFAULT_SHADER_ATTRIB_LOCATION_INDICES] = rlLoadVertexBufferElement(mesh->indices, mesh->triangleCount*3*sizeof(unsigned short), dynamic);
+        mesh->vboId[RL_DEFAULT_SHADER_ATTRIB_LOCATION_INDICES] = rlLoadVertexBufferElement(mesh->indices, mesh->triangleCount*3*sizeof(unsigned int), dynamic);
     }
 
     if (mesh->vaoId > 0) TRACELOG(LOG_INFO, "VAO: [ID %i] Mesh uploaded successfully to VRAM (GPU)", mesh->vaoId);
@@ -2564,7 +2564,7 @@ Mesh GenMeshPlane(float width, float length, int resX, int resZ)
     mesh.vertices = (float *)RL_MALLOC(mesh.vertexCount*3*sizeof(float));
     mesh.texcoords = (float *)RL_MALLOC(mesh.vertexCount*2*sizeof(float));
     mesh.normals = (float *)RL_MALLOC(mesh.vertexCount*3*sizeof(float));
-    mesh.indices = (unsigned short *)RL_MALLOC(mesh.triangleCount*3*sizeof(unsigned short));
+    mesh.indices = (unsigned int *)RL_MALLOC(mesh.triangleCount*3*sizeof(unsigned int));
 
     // Mesh vertices position array
     for (int i = 0; i < mesh.vertexCount; i++)
@@ -2731,7 +2731,7 @@ Mesh GenMeshCube(float width, float height, float length)
     mesh.normals = (float *)RL_MALLOC(24*3*sizeof(float));
     memcpy(mesh.normals, normals, 24*3*sizeof(float));
 
-    mesh.indices = (unsigned short *)RL_MALLOC(36*sizeof(unsigned short));
+    mesh.indices = (unsigned int*)RL_MALLOC(36*sizeof(unsigned int));
 
     int k = 0;
 
@@ -6324,7 +6324,7 @@ static Model LoadVOX(const char *fileName)
 
         // Copy indices
         size = voxarray.indices.used*sizeof(unsigned short);
-        pmesh->indices = (unsigned short *)RL_MALLOC(size);
+        pmesh->indices = (unsigned int*)RL_MALLOC(size);
         memcpy(pmesh->indices, pindices, size);
 
         pmesh->triangleCount = (pmesh->vertexCount/4)*2;
